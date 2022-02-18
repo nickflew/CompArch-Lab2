@@ -1,0 +1,71 @@
+int SBC (int Rd, int Rn, int Operand2, int I, int S, int CC){
+   
+   //keep track of currect register value.
+   int cur = 0;
+  
+   //if loop to check Immediate value (I = 0,1)
+   if(I == 0) {
+      int sh = (Operand2 & 0x00000060) >> 5;
+      int shamt5 = (Operand2 & 0x00000F80) >> 7;
+      int bit4 = (Operand2 & 0x00000010) >> 4;
+      int Rm = Operand2 & 0x0000000F;
+      int Rs = (Operand2 & 0x00000F00) >> 8;
+      
+      if (bit4 == 0){
+         switch (sh) {
+            case 0: // LSL-- logical shift left -- multiplication by 2^n
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] << shamt5);
+   	         break;
+            case 1: //LSR -- logicla shift right -- unsigned division by 2^n
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] >> shamt5);
+   	         break;
+            case 2: //ASR -- arithmetic shift -- signed division by 2^n
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] >> shamt5);
+       	      break;
+            case 3: //ROR -- logical rotate -- 32 bit rotate
+               cur = CURRENT_STATE.REGS[Rn] - ((CURRENT_STATE.REGS[Rm] >> shamt5) |
+                     (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+   	         break;
+         }//end switch
+       }//end if
+              
+       else{
+         switch (sh) {
+            case 0: //LSL
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
+   	         break;
+            case 1: //LSR
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]);
+   	         break;
+            case 2: //ASR
+               cur = CURRENT_STATE.REGS[Rn] - (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]); //need to fix ASR
+   	         break;
+            case 3: //ROR
+               cur = CURRENT_STATE.REGS[Rn] - ((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
+                     (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs])));
+   	         break;
+         } //end switch
+       }//end else
+   }//end if I = 0
+   
+   
+   if(I == 1){
+      int rotate = Operand2 >> 8;
+      int Imm = Operand2 & 0x000000FF;
+      cur = CURRENT_STATE.REGS[Rn] + (Imm>>2*rotate|(Imm<<(32-2*rotate)));
+
+   }//end I = 1
+   
+   //subtract w carry -- Cbar = C - 1
+   NEXT_STATE.REGS[Rd] = cur + C_CUR - 1;
+   if (S == 1) {
+      if (cur < 0)
+         //negative flag
+         NEXT_STATE.CPSR |= N_N;
+      if (cur == 0)
+         //zero flag
+         NEXT_STATE.CPSR |= Z_N;
+   }//end if	
+   
+   return 0;
+}//end SUBC
