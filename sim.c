@@ -109,7 +109,21 @@ int data_process(char* i_) {
   char rn[5]; rn[4] = '\0';
   char rd[5]; rd[4] = '\0';
   char operand2[13]; operand2[12] = '\0';
-  
+  char d_shift[9]; d_shift[8] = '\0';
+  d_shift[0] = i_[20];
+  d_shift[1] = i_[21];
+  d_shift[2] = i_[22];
+  d_shift[3] = i_[23];
+  d_shift[4] = i_[24];
+  d_shift[5] = i_[25];
+  d_shift[6] = i_[26];
+  d_shift[7] = i_[27];
+  char d_sh[3];
+  d_sh[2] = '\0';
+  d_sh[0] = i_[25];
+  d_sh[1] = i_[26];
+
+
   for(int i = 0; i < 4; i++) {
     rn[i] = i_[12+i];
     rd[i] = i_[16+i];
@@ -144,7 +158,7 @@ int data_process(char* i_) {
   }//end AND	
   
   //EOR
-  if(!strcmp(d_opcode,"0000")) {
+  if(!strcmp(d_opcode,"0001")) {
     printf("--- This is an EOR instruction. \n");
     EOR(Rd, Rn, Operand2, I, S, CC);
     return 0;
@@ -222,8 +236,29 @@ int data_process(char* i_) {
   	
   //MOV  1101 = MOV - Rd:= Op2
   if(!strcmp(d_opcode,"1101")) {
-    printf("--- This is a MOV instruction. \n");
-    MOV(Rd, Rn, Operand2, I, S, CC);
+    printf("--- This is a Shift instruction. \n");
+    int shift = bchar_to_int(d_shift);
+    int sh = bchar_to_int(d_sh);
+    if( (I == 1) | (shift == 0) ) MOV(Rd, Rn, Operand2, I, S, CC);
+    else {
+      switch (sh) {
+        case 0: LSL(Rd, Rn, Operand2, I, S, CC);
+        printf("--- This is a Logical Shift Left Instruction. \n");
+        break;
+
+        case 1: LSR(Rd, Rn, Operand2, I, S, CC);
+        printf("--- This is a Logical Shift Right Instruction. \n");
+        break;
+
+        case 2: ASR(Rd, Rn, Operand2, I, S, CC);
+        printf("--- This is an Arithmetic Shift Right Instruction. \n");
+        break;
+
+        case 3: ROR(Rd, Rn, Operand2, I, S, CC);
+        printf("--- This is a Rotate Shift Right Instruction. \n");
+        break;
+      }
+    }
     return 0;
   }//end MOV	
   
@@ -290,7 +325,7 @@ char d_opcode[5];
   int Rn = bchar_to_int(rn);
   int Rd = bchar_to_int(rd);
   int Operand2 = bchar_to_int(operand2);
-  //int I = i_[6]-'0'; --- I = 00 for multipling instructions 
+  int I = i_[6]-'0'; //--- I = 00 for multipling instructions 
   int S = i_[11]-'0';
   int CC = bchar_to_int(d_cond);
   printf("Opcode = %s\n Rn = %d\n Rd = %d\n Operand2 = %s\n I = %d\n S = %d\n COND = %s\n", d_opcode, Rn, Rd, byte_to_binary12(Operand2), I, S, byte_to_binary4(CC));
@@ -308,7 +343,9 @@ int transfer_process(char* i_) {
 
   /* This function execute memory instruction */
 
-  /* Add memory instructions here */ 
+  /* Add memory instructions here */
+
+   
 
   return 1;
 
@@ -334,6 +371,59 @@ unsigned int OPCODE(unsigned int i_word) {
 
 }//end OPCODE
 
+int condition(char* i_) {
+  char de_cond[5];
+  de_cond[0] = i_[0];
+  de_cond[1] = i_[1];
+  de_cond[2] = i_[2];
+  de_cond[3] = i_[3];
+  de_cond[4] = '\0';
+  int CC = bchar_to_int(de_cond);
+  int truth; //if truth = 1 execute
+
+  switch (CC) {
+  case 0: //cond EQ 0000
+    if(Z_CUR) truth = 1;
+    else truth = 0;
+    break;
+
+  case 1: //cond NE 0001
+    if(!Z_CUR) truth = 1;
+    else truth = 0;
+    break;
+  
+  case 10: //cond GE 1010
+    if( !( (N_CUR) ^ (V_CUR))) truth = 1;
+    else truth = 0;
+    break;
+
+  case 11: //cond LT 1011
+    if( N_CUR ^ V_CUR ) truth = 1;
+    else truth = 0;
+    break;
+
+  case 12: //cond GT 1100
+    if( (!Z_CUR) & (!( (N_CUR) ^ (V_CUR) ) )) truth = 1;
+    else truth = 0;
+    break;
+
+  case 13: //cond LE 1101
+    if( (Z_CUR) | ( (N_CUR) ^ (V_CUR) ) ) truth = 1;
+    else truth = 0;
+    break;
+
+  case 14: //cond AL 1110 
+    truth = 1;
+    break;
+  
+  default:
+    truth = 1;    //just in case a condition code is input that isnt implemented
+    break;
+
+}
+
+return truth;
+}
 
 int decode_and_execute(char* i_) {
 
@@ -341,6 +431,9 @@ int decode_and_execute(char* i_) {
      This function decode the instruction and update 
      CPU_State (NEXT_STATE)
   */
+
+ if(condition(i_)) { //if condition passes, execute code. If not, ignore
+
 
   if((i_[4] == '1') && (i_[5] == '0') && (i_[6] == '1')) {
     printf("- This is a Branch Instruction. \n");
@@ -366,6 +459,8 @@ int decode_and_execute(char* i_) {
     printf("- This is a Software Interruption Instruction. \n");
     interruption_process(i_);
   }
+
+ }
   
   return 0;
 
