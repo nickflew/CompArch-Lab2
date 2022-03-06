@@ -38,10 +38,10 @@ int ars(int left, int right) {
 }
 
 //overflow test
-bool ovflow(int a, int b, int c) {  //if a and b are positive and c is negative overlow
-  bool truth;                       //if a and b are negative and c is positive overflow
-  if( ((a > 0) & (b > 0) & (c < 0)) | ((a < 0) & (b < 0) & (c > 0) ) ) truth = TRUE;
-  else truth = FALSE;
+int ovflow(int a, int b, int c) {  //if a and b are positive and c is negative overlow
+  int truth;                       //if a and b are negative and c is positive overflow
+  if( ((a > 0) & (b > 0) & (c < 0)) | ((a < 0) & (b < 0) & (c > 0) ) ) truth = 1;
+  else truth = 0;
   return truth;
 }
 
@@ -55,7 +55,7 @@ int rotate(int left, int right) {
 
 //ADD Function
 int ADD (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-  bool overflow = FALSE;
+  int overflow = 0;
   int cur = 0;
   if(I == 0) {
     
@@ -141,7 +141,7 @@ int ADD (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
-    if (overflow)
+    if (overflow == 1)
       NEXT_STATE.CPSR |= V_N;
     
     
@@ -157,6 +157,7 @@ int ADD (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 //Add With Carry Function
 int ADC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 int cur = 0;
+int overflow;
 if(I == 0) {
   int sh = (Operand2 & 0x00000060) >> 5;
   int shamt5 = (Operand2 & 0x00000F80) >> 7;
@@ -175,7 +176,7 @@ if(I == 0) {
 
       //logical shift right
       case 1: cur = CURRENT_STATE.REGS[Rn] +
-      CURRENT_STATE.REGS[Rm] >> shamt5;
+      (CURRENT_STATE.REGS[Rm] >> shamt5);
       overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> shamt5), cur);
       break;
 
@@ -201,7 +202,7 @@ if(I == 0) {
       //logical shift left reg
       case 0: cur = CURRENT_STATE.REGS[Rn] + 
 	  (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
-    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]), cur)
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]), cur);
 	  break;
 
       //logical shift right reg
@@ -243,6 +244,8 @@ if(I == 0) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
+    if ( overflow == 1)
+      NEXT_STATE.CPSR |= V_N;
   }	
   return 0;
 
@@ -335,64 +338,15 @@ int cur = 0;
 
 //ASR Function
 int ASR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-  int cur = 0;
-  if(I == 0) {
-    int sh = (Operand2 & 0x00000060) >> 5;
+   int cur = 0;
+  
     int shamt5 = (Operand2 & 0x00000F80) >> 7;
     int bit4 = (Operand2 & 0x00000010) >> 4;
     int Rm = Operand2 & 0x0000000F;
     int Rs = (Operand2 & 0x00000F00) >> 8;
-    if (bit4 == 0) 
-      switch (sh) {
-
-        //logical shift left
-      case 0: cur = ars(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << shamt5));
-	  break;
-
-      //logical shift right
-      case 1: cur = ars(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> shamt5));
-	  break;
-
-      //arithmetic shift right NEEDS CHECKING
-      case 2: 
-        cur = ars(CURRENT_STATE.REGS[Rn], ars(CURRENT_STATE.REGS[Rm], shamt5));
-        break;
-      
-
-      //rotate shift right
-      case 3: ars(CURRENT_STATE.REGS[Rn], ( (CURRENT_STATE.REGS[Rm] >> shamt5) |
-                  (CURRENT_STATE.REGS[Rm] << (32 - shamt5) ) ));
-      
-	  break;
-      }     
-    else 
-      switch (sh) {
-
-        //logical shift left
-      case 0: cur = ars(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]));
-	  break;
-
-        //logical shift right
-      case 1: cur = ars(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]));
-	  break;
-
-      //arithmetic shift right NEEDS CHECKING
-      case 2: {
-        cur = ars(CURRENT_STATE.REGS[Rn], ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REG[Rs])); 
-        break;
-      }
-	  
-      //rotate shift right
-      case 3: cur = ars(CURRENT_STATE.REGS[Rn], ( (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
-                  (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs]) ) ));
-	  break;
-      }      
-  }
-  if (I == 1) {
-    int rotate = Operand2 >> 8;
-    int Imm = Operand2 & 0x000000FF;
-    cur = ars(CURRENT_STATE.REGS[Rn], (Imm>>2*rotate|(Imm<<(32-2*rotate))));
-  }
+    
+    if( bit4 == 0) cur = ars( CURRENT_STATE.REGS[Rm], shamt5);
+    else cur = ars( CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]);
 
   NEXT_STATE.REGS[Rd] = cur;
   if (S == 1) {
@@ -404,14 +358,16 @@ int ASR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
   return 0;
 
 
+
+
 }
 
 
 
 //Branch Operation
-int B (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-
-
+int B (int imm24, int CC) {
+  NEXT_STATE.PC = (CURRENT_STATE.PC + 8) + (imm24 << 2);
+  return 0;
 }
 
 
@@ -431,23 +387,23 @@ int BIC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
         //logical shift left
       case 0: cur = CURRENT_STATE.REGS[Rn] & 
-	   !(CURRENT_STATE.REGS[Rm] << shamt5);
+	   ~(CURRENT_STATE.REGS[Rm] << shamt5);
 	  break;
 
       //logical shift right
       case 1: cur = CURRENT_STATE.REGS[Rn] & 
-	  !(CURRENT_STATE.REGS[Rm] >> shamt5);
+	  ~(CURRENT_STATE.REGS[Rm] >> shamt5);
 	  break;
 
       //arithmetic shift right NEEDS CHECKING
       case 2: {
-        cur = CURRENT_STATE.REGS[Rn] & !(ars(CURRENT_STATE.REGS[Rm], shamt5)); 
+        cur = CURRENT_STATE.REGS[Rn] & ~(ars(CURRENT_STATE.REGS[Rm], shamt5)); 
         break;
       }
 
       //rotate shift right
       case 3: cur = CURRENT_STATE.REGS[Rn] & 
-	      !((CURRENT_STATE.REGS[Rm] >> shamt5) |
+	      ~((CURRENT_STATE.REGS[Rm] >> shamt5) |
                (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
 	  break;
       }     
@@ -456,23 +412,23 @@ int BIC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
         //logical shift left
       case 0: cur = CURRENT_STATE.REGS[Rn] & 
-	  !(CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
+	  ~(CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
 	  break;
 
         //logical shift right
       case 1: cur = CURRENT_STATE.REGS[Rn] & 
-	  !(CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]);
+	  ~(CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]);
 	  break;
 
       //arithmetic shift right NEEDS CHECKING
       case 2: {
-        cur = CURRENT_STATE.REGS[Rn] & !(ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs])); 
+        cur = CURRENT_STATE.REGS[Rn] & ~(ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs])); 
         break;
       }
 	  
       //rotate shift right
       case 3: cur = CURRENT_STATE.REGS[Rn] & 
-	      !((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
+	      ~((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
                (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs])));
 	  break;
       }      
@@ -480,7 +436,7 @@ int BIC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
   if (I == 1) {
     int rotate = Operand2 >> 8;
     int Imm = Operand2 & 0x000000FF;
-    cur = CURRENT_STATE.REGS[Rn] & !(Imm>>2*rotate|(Imm<<(32-2*rotate)));
+    cur = CURRENT_STATE.REGS[Rn] & ~(Imm>>2*rotate|(Imm<<(32-2*rotate)));
   }
 
   NEXT_STATE.REGS[Rd] = cur;
@@ -501,14 +457,18 @@ int BIC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 
 //Branch with Link Operation
-int BL (int Rd, int Rn, int Operand2, int I, int S, int CC);
+int BL (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+  NEXT_STATE.REGS[14] = CURRENT_STATE.PC + 4;
+  NEXT_STATE.PC = (CURRENT_STATE.PC + 8) + (imm24 << 2);
+  return 0;
+}
 
 
 
 
 //Compare Negative Operation
 int CMN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-   bool overflow = FALSE;
+   int overflow = 0;
   int cur = 0;
   if(I == 0) {
     
@@ -593,7 +553,7 @@ int CMN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
-    if (overflow)
+    if (overflow == 1)
       NEXT_STATE.CPSR |= V_N;
     
     
@@ -608,7 +568,7 @@ int CMN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 //Compare Operation
 int CMP (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-   bool overflow = FALSE;
+   int overflow = 0;
   int cur = 0;
   if(I == 0) {
     
@@ -693,7 +653,7 @@ int CMP (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
-    if (overflow)
+    if (overflow == 1)
       NEXT_STATE.CPSR |= V_N;
     
     
@@ -802,53 +762,99 @@ int LDRB (char* i_);
 
 
 
-//Logical Shift Left Operation
-int LSL (int Rd, int Rn, int Operand2, int I, int S, int CC);
+//Logical Shift Left Operation ASK CALE
+int LSL(int Rd, int Rn, int Operand2, int I, int S, int CC) {
+  int cur = 0;
+  
+    int shamt5 = (Operand2 & 0x00000F80) >> 7;
+    int bit4 = (Operand2 & 0x00000010) >> 4;
+    int Rm = Operand2 & 0x0000000F;
+    int Rs = (Operand2 & 0x00000F00) >> 8;
+    
+    if( bit4 == 0) cur = CURRENT_STATE.REGS[Rm] << shamt5;
+    else cur = CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs];
+
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+
+
+  
+}
 
 
 
 
 
 //Logical Shift Right Operation
-int LSR (int Rd, int Rn, int Operand2, int I, int S, int CC);
+int LSR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+   int cur = 0;
+  
+    int shamt5 = (Operand2 & 0x00000F80) >> 7;
+    int bit4 = (Operand2 & 0x00000010) >> 4;
+    int Rm = Operand2 & 0x0000000F;
+    int Rs = (Operand2 & 0x00000F00) >> 8;
+    
+    if( bit4 == 0) cur = CURRENT_STATE.REGS[Rm] >> shamt5;
+    else cur = CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs];
+
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+
+
+
+
+}
 
 
 
 
 
 //Multiple Accumulate Operation
-int MLA (char* i_);
+int MLA (int Rd, int Rn, int Rm, int Ra, int S, int CC) {
+
+  int cur = CURRENT_STATE.REGS[Rn] * CURRENT_STATE.REGS[Rm];
+  cur = cur + Ra;
+
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+}
 
 
 
 
 
 //Move Operation
-int MOV (int Rd, int Rn, int Operand2, int I, int S, int CC);
-
-
-
-
-
-
-//Multiply Operation
-int MUL (char* i_);
-
-
-
-
-
-//Bitwise NOT Operation
-int MVN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+int MOV (int Rd, int Rn, int Operand2, int I, int S, int CC) {
    int cur = 0;
-  if(I == 0) {
-    int sh = (Operand2 & 0x00000060) >> 5;
-    int shamt5 = (Operand2 & 0x00000F80) >> 7;
-    int bit4 = (Operand2 & 0x00000010) >> 4;
-    int Rm = Operand2 & 0x0000000F;
-    int Rs = (Operand2 & 0x00000F00) >> 8;
+  
+    int rotate = Operand2 >> 8;
+    int Imm = Operand2 & 0x000000FF;
+    cur = (Imm>>2*rotate|(Imm<<(32-2*rotate)));
     
-  NEXT_STATE.REGS[Rd] = !(NEXT_STATE.REGS[Rn]);
+  
+
+  NEXT_STATE.REGS[Rd] = cur;
   if (S == 1) {
     if (cur < 0)
       NEXT_STATE.CPSR |= N_N;
@@ -865,8 +871,48 @@ int MVN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 
 
+//Multiply Operation
+int MUL (int Rd, int Rn, int Rm, int S, int CC) {
+
+  int cur = CURRENT_STATE.REGS[Rn] * CURRENT_STATE.REGS[Rm];
+
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+}
+
+
+
+
+
+//Bitwise NOT Operation
+int MVN (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+   int cur = ~(CURRENT_STATE.REGS[Rn]);
+
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+}
+
+
+
+
+
+
 //ORR Operation
-int ORR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+int ORR(int Rd, int Rn, int Operand2, int I, int S, int CC) {
   int cur = 0;
   if(I == 0) {
     int sh = (Operand2 & 0x00000060) >> 5;
@@ -950,60 +996,15 @@ int ORR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 //Rotate Shift Right Operation
 int ROR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-  int cur = 0;
-  if(I == 0) {
-    int sh = (Operand2 & 0x00000060) >> 5;
+   int cur = 0;
+  
     int shamt5 = (Operand2 & 0x00000F80) >> 7;
     int bit4 = (Operand2 & 0x00000010) >> 4;
     int Rm = Operand2 & 0x0000000F;
     int Rs = (Operand2 & 0x00000F00) >> 8;
-    if (bit4 == 0) 
-      switch (sh) {
-
-        //logical shift left
-      case 0: cur = rotate(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << shamt5));
-	  break;
-
-      //logical shift right
-      case 1: cur = rotate(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> shamt5));
-	  break;
-
-      //arithmetic shift right NEEDS CHECKING
-      case 2: { cur = rotate(CURRENT_STATE.REGS[Rn], ars(CURRENT_STATE.REGS[Rm], shamt5));
-        break;
-      }
-
-      //rotate shift right
-      case 3: cur = rotate(CURRENT_STATE.REGS[Rn], rotate(CURRENT_STATE.REGS[Rm], shamt5));
-	  break;
-      }     
-    else
-      switch (sh) {
-
-        //logical shift left
-      case 0: cur = rotate(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs])); 
-	  break;
-
-        //logical shift right
-      case 1: cur = rotate(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]));
-	  break;
-
-      //arithmetic shift right NEEDS CHECKING
-      case 2: {
-        cur = rotate(CURRENT_STATE.REGS[Rn], ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs])); 
-        break;
-      }
-	  
-      //rotate shift right
-      case 3: cur = rotate(CURRENT_STATE.REGS[Rn], rotate(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]));
-	  break;
-      }      
-  }
-  if (I == 1) {
-    int rotate = Operand2 >> 8;
-    int Imm = Operand2 & 0x000000FF;
-    cur = rotate(CURRENT_STATE.REGS[Rn], (Imm>>2*rotate|(Imm<<(32-2*rotate))) );
-  }
+    
+    if( bit4 == 0) cur = rotate(CURRENT_STATE.REGS[Rm], shamt5);
+    else cur = rotate(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]);
 
   NEXT_STATE.REGS[Rd] = cur;
   if (S == 1) {
@@ -1023,7 +1024,7 @@ int ROR (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 //Subtract With Carry Operation
 int SBC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-  bool overflow = FALSE;
+  int overflow = 0;
   int cur = 0;
   if(I == 0) {
     
@@ -1109,7 +1110,7 @@ int SBC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
-    if (overflow)
+    if (overflow == 1)
       NEXT_STATE.CPSR |= V_N;
     
     
@@ -1122,7 +1123,9 @@ int SBC (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 
 //Store Register
-int STR (char* i_);
+int STR (int Rd, int Rn, int Operand2, int I, int PW, int U) {
+
+}
 
 
 
@@ -1136,7 +1139,7 @@ int STRB (char* i_);
 
 //Subtract Operation
 int SUB (int Rd, int Rn, int Operand2, int I, int S, int CC) {
-   bool overflow = FALSE;
+   int overflow = 0;
   int cur = 0;
   if(I == 0) {
     
@@ -1222,7 +1225,7 @@ int SUB (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       NEXT_STATE.CPSR |= N_N;
     if (cur == 0)
       NEXT_STATE.CPSR |= Z_N;
-    if (overflow)
+    if (overflow == 1)
       NEXT_STATE.CPSR |= V_N;
     
     
@@ -1231,8 +1234,96 @@ int SUB (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 }
 
+//Reverse Subtraction
+int RSB (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+   int overflow = 0;
+  int cur = 0;
+  if(I == 0) {
+    
+    int sh = (Operand2 & 0x00000060) >> 5;
+    int shamt5 = (Operand2 & 0x00000F80) >> 7;
+    int bit4 = (Operand2 & 0x00000010) >> 4;
+    int Rm = Operand2 & 0x0000000F;
+    int Rs = (Operand2 & 0x00000F00) >> 8;
+    if (bit4 == 0) 
+      switch (sh) {
+
+        //logical shift left
+      case 0: cur = (CURRENT_STATE.REGS[Rm] << shamt5) - CURRENT_STATE.REGS[Rn];
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << shamt5), cur);
+	  break;
+
+      //logical shift right
+      case 1: cur = (CURRENT_STATE.REGS[Rm] >> shamt5) - CURRENT_STATE.REGS[Rn];
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> shamt5), cur);
+	  break;
+
+      //arithmetic shift right NEEDS CHECKING
+      case 2: {
+        cur = ars(CURRENT_STATE.REGS[Rm], shamt5) - CURRENT_STATE.REGS[Rn];
+        overflow = ovflow(CURRENT_STATE.REGS[Rn], (ars(CURRENT_STATE.REGS[Rm], shamt5)), cur);
+        break;
+      }
+
+      //rotate shift right
+      case 3: cur =  ((CURRENT_STATE.REGS[Rm] >> shamt5) |
+               (CURRENT_STATE.REGS[Rm] << (32 - shamt5))) - CURRENT_STATE.REGS[Rn];
+           overflow = ovflow(CURRENT_STATE.REGS[Rn], ((CURRENT_STATE.REGS[Rm] >> shamt5) |
+               (CURRENT_STATE.REGS[Rm] << (32 - shamt5))), cur);    
+	  break;
+      }     
+    else
+      switch (sh) {
+
+        //logical shift left
+      case 0: cur = (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]) - CURRENT_STATE.REGS[Rn];
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]), cur);
+	  break;
+
+        //logical shift right
+      case 1: cur = (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) - CURRENT_STATE.REGS[Rn];
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]), cur);
+	  break;
+
+      //arithmetic shift right NEEDS CHECKING
+      case 2: {
+        cur = ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]) - CURRENT_STATE.REGS[Rn]; 
+        overflow = ovflow(CURRENT_STATE.REGS[Rn], (ars(CURRENT_STATE.REGS[Rm], shamt5)), cur);
+        break;
+      }
+	  
+      //rotate shift right
+      case 3: cur =  ((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
+               (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs]))) - CURRENT_STATE.REGS[Rn];
+              overflow = ovflow(CURRENT_STATE.REGS[Rn], ((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
+               (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs]))), cur);
+          
+	  break;
+      }      
+  }
+  if (I == 1) {
+    int rotate = Operand2 >> 8;
+    int Imm = Operand2 & 0x000000FF;
+    cur = (Imm>>2*rotate|(Imm<<(32-2*rotate))) - CURRENT_STATE.REGS[Rn];
+    overflow = ovflow(CURRENT_STATE.REGS[Rn], (Imm>>2*rotate|(Imm<<(32-2*rotate))), cur);
+  }
 
 
+  //set conditional flags
+  NEXT_STATE.REGS[Rd] = cur;
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+    if (overflow == 1)
+      NEXT_STATE.CPSR |= V_N;
+    
+    
+  }	
+  return 0;
+
+}
 
 
 //Test Equivalence Operation
@@ -1248,23 +1339,23 @@ int TEQ (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       switch (sh) {
 
         //logical shift left
-      case 0: cur = CURRENT_STATE.REGS[Rn] | 
+      case 0: cur = CURRENT_STATE.REGS[Rn] ^ 
 	  (CURRENT_STATE.REGS[Rm] << shamt5);
 	  break;
 
       //logical shift right
-      case 1: cur = CURRENT_STATE.REGS[Rn] | 
+      case 1: cur = CURRENT_STATE.REGS[Rn] ^ 
 	  (CURRENT_STATE.REGS[Rm] >> shamt5);
 	  break;
 
       //arithmetic shift right NEEDS CHECKING
       case 2: {
-        cur = CURRENT_STATE.REGS[Rn] | ars(CURRENT_STATE.REGS[Rm], shamt5); 
+        cur = CURRENT_STATE.REGS[Rn] ^ ars(CURRENT_STATE.REGS[Rm], shamt5); 
         break;
       }
 
       //rotate shift right
-      case 3: cur = CURRENT_STATE.REGS[Rn] | 
+      case 3: cur = CURRENT_STATE.REGS[Rn] ^ 
 	      ((CURRENT_STATE.REGS[Rm] >> shamt5) |
                (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
 	  break;
@@ -1273,23 +1364,23 @@ int TEQ (int Rd, int Rn, int Operand2, int I, int S, int CC) {
       switch (sh) {
 
         //logical shift left
-      case 0: cur = CURRENT_STATE.REGS[Rn] | 
+      case 0: cur = CURRENT_STATE.REGS[Rn] ^ 
 	  (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
 	  break;
 
         //logical shift right
-      case 1: cur = CURRENT_STATE.REGS[Rn] | 
+      case 1: cur = CURRENT_STATE.REGS[Rn] ^ 
 	  (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]);
 	  break;
 
       //arithmetic shift right NEEDS CHECKING
       case 2: {
-        cur = CURRENT_STATE.REGS[Rn] | ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]); 
+        cur = CURRENT_STATE.REGS[Rn] ^ ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]); 
         break;
       }
 	  
       //rotate shift right
-      case 3: cur = CURRENT_STATE.REGS[Rn] | 
+      case 3: cur = CURRENT_STATE.REGS[Rn] ^ 
 	      ((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
                (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs])));
 	  break;
@@ -1298,7 +1389,7 @@ int TEQ (int Rd, int Rn, int Operand2, int I, int S, int CC) {
   if (I == 1) {
     int rotate = Operand2 >> 8;
     int Imm = Operand2 & 0x000000FF;
-    cur = CURRENT_STATE.REGS[Rn] | (Imm>>2*rotate|(Imm<<(32-2*rotate)));
+    cur = CURRENT_STATE.REGS[Rn] ^ (Imm>>2*rotate|(Imm<<(32-2*rotate)));
   }
 
   if (S == 1) {
@@ -1319,7 +1410,83 @@ int TEQ (int Rd, int Rn, int Operand2, int I, int S, int CC) {
 
 
 //Test Operation
-int TST (int Rd, int Rn, int Operand2, int I, int S, int CC);
+int TST (int Rd, int Rn, int Operand2, int I, int S, int CC) {
+  int cur = 0;
+  if(I == 0) {
+    int sh = (Operand2 & 0x00000060) >> 5;
+    int shamt5 = (Operand2 & 0x00000F80) >> 7;
+    int bit4 = (Operand2 & 0x00000010) >> 4;
+    int Rm = Operand2 & 0x0000000F;
+    int Rs = (Operand2 & 0x00000F00) >> 8;
+    if (bit4 == 0) 
+      switch (sh) {
+
+        //logical shift left
+      case 0: cur = CURRENT_STATE.REGS[Rn] & 
+	  (CURRENT_STATE.REGS[Rm] << shamt5);
+	  break;
+
+      //logical shift right
+      case 1: cur = CURRENT_STATE.REGS[Rn] & 
+	  (CURRENT_STATE.REGS[Rm] >> shamt5);
+	  break;
+
+      //arithmetic shift right NEEDS CHECKING
+      case 2: {
+        cur = CURRENT_STATE.REGS[Rn] & ars(CURRENT_STATE.REGS[Rm], shamt5); 
+        break;
+      }
+
+      //rotate shift right
+      case 3: cur = CURRENT_STATE.REGS[Rn] & 
+	      ((CURRENT_STATE.REGS[Rm] >> shamt5) |
+               (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+	  break;
+      }     
+    else
+      switch (sh) {
+
+        //logical shift left
+      case 0: cur = CURRENT_STATE.REGS[Rn] &
+	  (CURRENT_STATE.REGS[Rm] << CURRENT_STATE.REGS[Rs]);
+	  break;
+
+        //logical shift right
+      case 1: cur = CURRENT_STATE.REGS[Rn] & 
+	  (CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]);
+	  break;
+
+      //arithmetic shift right NEEDS CHECKING
+      case 2: {
+        cur = CURRENT_STATE.REGS[Rn] & ars(CURRENT_STATE.REGS[Rm], CURRENT_STATE.REGS[Rs]); 
+        break;
+      }
+	  
+      //rotate shift right
+      case 3: cur = CURRENT_STATE.REGS[Rn] & 
+	      ((CURRENT_STATE.REGS[Rm] >> CURRENT_STATE.REGS[Rs]) |
+               (CURRENT_STATE.REGS[Rm] << (32 - CURRENT_STATE.REGS[Rs])));
+	  break;
+      }      
+  }
+  if (I == 1) {
+    int rotate = Operand2 >> 8;
+    int Imm = Operand2 & 0x000000FF;
+    cur = CURRENT_STATE.REGS[Rn] & (Imm>>2*rotate|(Imm<<(32-2*rotate)));
+  }
+
+  if (S == 1) {
+    if (cur < 0)
+      NEXT_STATE.CPSR |= N_N;
+    if (cur == 0)
+      NEXT_STATE.CPSR |= Z_N;
+  }	
+  return 0;
+
+
+
+
+}
 
 
 

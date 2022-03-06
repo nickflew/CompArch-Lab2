@@ -282,7 +282,30 @@ int data_process(char* i_) {
 int branch_process(char* i_) {
   
   /* This function execute branch instruction */
-   
+  char d_cond[5];
+  d_cond[0] = i_[0];
+  d_cond[1] = i_[1];
+  d_cond[2] = i_[2];
+  d_cond[3] = i_[3];
+  d_cond[4] = '\0';
+
+  int CC = bchar_to_int(d_cond);
+
+  char L = i_[7];
+  char d_imm24[24];
+  for(i = 0; i < 24; i++) {
+    d_imm24[i] = i_[8+i];
+  }
+
+  int imm24 = bchar_to_int(d_imm24);
+
+//B Label
+  if(!strcmp(L,"0")) {
+    printf("--- This is a Branch instruction. \n");
+    B(imm24, CC);
+    return 0;
+  }//end B Label
+  
    
    
   /* Add branch instructions here */ 
@@ -295,12 +318,11 @@ int mul_process(char* i_) {
 
   /* This function execute multiply instruction */
 
-char d_opcode[5];
-  d_opcode[0] = i_[7]; 
-  d_opcode[1] = i_[8]; 
-  d_opcode[2] = i_[9]; 
-  d_opcode[3] = i_[10]; 
-  d_opcode[4] = '\0';
+char d_opcode[4];
+  d_opcode[0] = i_[8]; 
+  d_opcode[1] = i_[9]; 
+  d_opcode[2] = i_[10]; 
+  d_opcode[3] = '\0'; 
   
   char d_cond[5];  
   d_cond[0] = i_[0]; 
@@ -311,29 +333,46 @@ char d_opcode[5];
   
   char rn[5]; rn[4] = '\0';
   char rd[5]; rd[4] = '\0';
-  char operand2[13]; operand2[12] = '\0';
+  char rm[5]; rm[4] = '\0';
+  char ra[5]; ra[4] = '\0';
   
   for(int i = 0; i < 4; i++) {
-    rn[i] = i_[12+i];
-    rd[i] = i_[16+i];
-  }
-  
-  for(int i = 0; i < 12; i++) {
-    operand2[i] = i_[20+i];
+    rn[i] = i_[28+i];
+    rd[i] = i_[12+i];
+    rm[i] = i_[20+i];
+    ra[i] = i_[16+i];
   }
   
   int Rn = bchar_to_int(rn);
   int Rd = bchar_to_int(rd);
-  int Operand2 = bchar_to_int(operand2);
-  int I = i_[6]-'0'; //--- I = 00 for multipling instructions 
+  int Rm = bchar_to_int(rm);
+  int Ra = bchar_to_int(ra); 
   int S = i_[11]-'0';
   int CC = bchar_to_int(d_cond);
-  printf("Opcode = %s\n Rn = %d\n Rd = %d\n Operand2 = %s\n I = %d\n S = %d\n COND = %s\n", d_opcode, Rn, Rd, byte_to_binary12(Operand2), I, S, byte_to_binary4(CC));
+  printf("Opcode = %s\n Rn = %d\n Rd = %d\n Ra = %d\n Rm = %d\n S = %d\n COND = %s\n", d_opcode, Rn, Rd, Ra, Rm, S, byte_to_binary4(CC));
   printf("\n");
 
 
 
-  /* Add multiply instructions here */ 
+  /* Add multiply instructions here */
+ 
+
+  if(!strcmp(d_opcode,"000")) {
+    printf("--- This is a Multiply instruction. \n");
+    MUL(Rd, Rn, Rm, S, CC);
+    return 0;
+  }
+
+  if(!strcmp(d_opcode,"001")) {
+    printf("--- This is a Multiply Accumulate instruction. \n");
+    MLA(Rd, Rn, Rm, Ra, S, CC);
+    return 0;
+  }
+
+
+
+
+
 
   return 1;
 
@@ -344,8 +383,63 @@ int transfer_process(char* i_) {
   /* This function execute memory instruction */
 
   /* Add memory instructions here */
+  char d_cond[5];
+  d_cond[0] = i_[0];
+  d_cond[1] = i_[1];
+  d_cond[2] = i_[2];
+  d_cond[3] = i_[3];
+  d_cond[4] = '\0';
 
-   
+  char bl[3]; bl[2] = '\0';
+  bl[0] = i_[9];
+  bl[1] = i_[11];
+  int BL = bchar_to_int(bl);
+
+  char pw[3]; pw[2] = '\0';
+  pw[0] = i_[7];
+  pw[1] = i_[10];
+  int PW = bchar_to_int(pw);
+
+
+  int I = i_[6];
+  int U = i_[8];
+
+  char rn[5]; rn[4] = '\0';
+  char rd[5]; rd[4] = '\0';
+
+  for(int i = 0; i < 4; i++) {
+    rn[i] = i_[12+i];
+    rd[i] = i_[16+i];
+  }
+
+  int Rn = bchar_to_int(rn);
+  int Rd = bchar_to_int(rd);
+
+  char operand2[13]; operand2[12] = '\0';
+  for(int i = 0; i < 12; i++) {
+    operand2[i] = i_[20+i];
+  }
+
+  int Operand2 = bchar_to_int(operand2);
+
+  switch(BL) {
+    case 0: STR(Rd, Rn, Operand2, I, PW, U);
+    printf("--- This is a Store Register instruction. \n");
+    break;
+
+    case 1: LDR(Rd, Rn, Operand2, I, PW, U);
+    printf("--- This is a Load Regsiter instruction. \n");
+    break;
+
+    case 2: STRB(Rd, Rn, Operand2, I, PW, U);
+    printf("--- This is a Store Byte instruction. \n");
+    break;
+
+    case 3: LDRB(Rd, Rn, Operand2, I, PW, U);
+    printf("--- This is a Load Byte instruction. \n");
+    break;
+  }
+
 
   return 1;
 
